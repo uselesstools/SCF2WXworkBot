@@ -114,16 +114,11 @@ function transformGangData(body) {
 
     var retList = [];
     try{
-        console.log(body);
         var json_data = JSON.parse(body);
         console.log(json_data);
         var error = json_data['error'];
         if(error == false) {
-            var results = json_data.results;
-            results.forEach(element => {
-                console.log(element.url);
-                retList.push(element.url);
-            });
+            retList = json_data.results;
         }
     }catch(e){
         console.log(e);
@@ -139,23 +134,80 @@ async function main3() {
 
         var index = Math.floor(Math.random() *20);
         console.log('index:' + index);
-        var urlImage = list[index];
+        var urlImage = list[index].url;
         console.log(urlImage);
         let imageData = await doRequestBinary(urlImage);
 
         // await writeFileAsync('./1.jpg', imageData);
         var bot = require('./send2Bot');
         await bot.sendImgToAllBot(bot_url, imageData);
+        await bot.sendTextToAllBot(bot_url, '休息，休息一下，喝杯水吧！');
         console.log('send bot ok');
 
     }catch(e) {
         console.log(e);
     }
 }
+function transformGangInfoData(body) {
+
+    var retList = [];
+    try{
+        var json_data = JSON.parse(body);
+        console.log(json_data);
+        var error = json_data['error'];
+        if(error == false) {
+            retList = json_data.results;
+        }
+    }catch(e){
+        console.log(e);
+    }
+    return retList;
+}
+function sleep(ms) {
+	return new Promise(resolve => setTimeout(resolve, ms))
+}
+async function main4() {
+    try {
+        var index = Math.floor(Math.random() *9000)+1;
+        var req_url = 'http://gank.io/api/data/all/1/'+index;
+        console.log(req_url);
+        let ret = await doRequest(req_url);
+        let infoData = transformGangInfoData(ret)[0];
+        console.log(infoData);
+
+        var img_url = '';
+        var i = 0;
+        do{
+            if(i>0) {
+                await sleep(10*1000);
+            }
+            i++;
+            var index2 = Math.floor(Math.random() *600)+1;
+            var req_url2 = 'http://gank.io/api/data/%E7%A6%8F%E5%88%A9/1/'+index2;
+            console.log(req_url2);
+            let retImg = await doRequest(req_url2);
+            var imageData = transformGangData(retImg)[0];
+            var create_date = new Date(imageData.createdAt).getTime();
+            var diff = Date.now() - create_date;
+            var diffDay = Math.round(diff/(24*60*60*1000));
+            console.log(diffDay+'天');
+            img_url = imageData.url;
+            console.log('img url:'+img_url);
+            
+        }while(diffDay>1440 || img_url.indexOf('clouddn.com')>0);//图片太老或者来自于clouddn.com图片就要重新再取一次图片
+
+        console.log('final image url:'+img_url);
+        var bot = require('./send2Bot');
+        await bot.sendNewsToAllBot(bot_url, infoData.url, img_url, infoData.desc, '('+infoData.type+')'+infoData.publishedAt);
+        console.log('send bot ok');
+    }catch(e) {
+        console.log(e);
+    }
+}
 
 exports.main_handler = async (event, context, callback) => {
-    await main3();
+    await main4();
 };
 
 
-main3();
+main4();
